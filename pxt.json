@@ -1,5 +1,6 @@
 {
     "name": "ev3Pro21",
+    "version": "1.0.0",
     "description": "",
     "dependencies": {
         "ev3": "*",
