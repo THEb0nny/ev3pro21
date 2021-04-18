@@ -1,0 +1,22 @@
+{
+    "name": "ev3Pro21",
+    "description": "",
+    "dependencies": {
+        "ev3": "*",
+        "automation": "github:microsoft/pxt-automation#v0.0.3",
+        "rgb_to_hsv_convert": "github:theb0nny/rgb_to_hsv_convert#v0.0.1",
+        "ht_color_sensor_v2": "github:theb0nny/ht_color_sensor_v2#v1.1.8"
+    },
+    "files": [
+        "main.ts",
+        "README.md",
+        "custom.ts"
+    ],
+    "testFiles": [
+        "test.ts"
+    ],
+    "supportedTargets": [
+        "ev3"
+    ],
+    "preferredEditor": "tsprj"
+}
