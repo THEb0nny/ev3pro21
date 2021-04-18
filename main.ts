@@ -7,12 +7,13 @@ let greyLeftColorS = (blackLeftColorS + whiteLeftColorS) / 2; // Серый ле
 greyLeftColorS = GetRefNormValColorS(2, false, true); // Получаем окончательные значения серого левого датчика
 let greyRightColorS = (blackRightColorS + whiteRightColorS) / 2; // Серый правого
 greyRightColorS = GetRefNormValColorS(3, false, true); // Получаем окончательные значения серого правого датчика
+
 const WHEELS_D = 62.4, WHEELS_W = 168; // Диамерт колёс, расстояние между центрами колёс в ММ
 const TURN_DIR_SEARCH_LINE = 2; // Подворот при поиске линии для езды одним датчиком
 const SPEED_AT_SEARCH_LINE = 20; // Скорость при поиске линии для езды одним датчиком
 const DIST_BEFORE_INTERSECTION_FOR_TURN = 30; // Дистанция для дополнительного прохождения для последующего поворота в мм
 const TIME_AFTER_TURN_TO_LINE_ALIGNMENT = 500; // Время для выравнивания после поворота до линии
-const MOTOR_A_SPEED = 30; // Скорость работы средного мотора
+const GRAB_MOTOR_SPEED = 30; // Скорость работы средного мотора
 const N_HT_COLOR_S_MEASUREMENTS = 10; // Количество измерений датчиками цвета
 
 // Максимальные значения RGB (на белом цвете) для нормализации датчика определения цвета
@@ -20,25 +21,26 @@ let lColorSensorRgbMax: number[] = [15, 13, 16];
 let rColorSensorRgbMax: number[] = [0, 0, 0];
 
 // Установка ПИД
+let Kp_LINE_FOLLOW_2S = 0.1, Ki_LINE_FOLLOW_2S = 0, Kd_LINE_FOLLOW_2S = 2.4; // Для езды по линии с двумя датчиками
+let Kp_LINE_FOLLOW_LS = 0.1, Ki_LINE_FOLLOW_LS = 0, Kd_LINE_FOLLOW_LS = 1.7; // Для езды левым датчиком по линии
+let Kp_LINE_FOLLOW_RS = 0.1, Ki_LINE_FOLLOW_RS = 0, Kd_LINE_FOLLOW_RS = 1.7; // Для езды правым датчиком по линии
+
 let Kp_TURN_CENTER = 0.2, Ki_TURN_CENTER = 0, Kd_TURN_CENTER = 2; // Для поворота относительно центра
 
 let Kp_TURN_REL_L_MOT = 0.3, Ki_TURN_REL_L_MOT = 0, Kd_TURN_REL_L_MOT = 2.7; // Для поворота относительно правого колеса
 let Kp_TURN_REL_R_MOT = 0.3, Ki_TURN_REL_R_MOT = 0, Kd_TURN_REL_R_MOT = 2.7; // Для поворота относительно левого колеса
 
-let Kp_LINE_FOLLOW_2S = 0.1, Ki_LINE_FOLLOW_2S = 0, Kd_LINE_FOLLOW_2S = 2; // Для езды по линии с двумя датчиками
-let Kp_LINE_FOLLOW_LS = 0.3, Ki_LINE_FOLLOW_LS = 0, Kd_LINE_FOLLOW_LS = 1; // Для езды левым датчиком по линии
-let Kp_LINE_FOLLOW_RS = 0.3, Ki_LINE_FOLLOW_RS = 0, Kd_LINE_FOLLOW_RS = 1; // Для езды правым датчиком по линии
+let Kp_ALIGN_ON_LINE = 0.2, Ki_ALIGN_ON_LINE = 0, Kd_ALIGN_ON_LINE = 2; // Для выравнивание между линией
 
-let Kp_L_LINE_ALIGN = 0.2, Ki_L_LINE_ALIGN = 0.001, Kd_L_LINE_ALIGN = 1; // Для выравнивания на линии левой стороной
-let Kp_R_LINE_ALIGN = 0.2, Ki_R_LINE_ALIGN = 0.001, Kd_R_LINE_ALIGN = 1; // Для выравнивания на линии правой стороной
+let Kp_L_LINE_ALIGN = 0.17, Ki_L_LINE_ALIGN = 0.001, Kd_L_LINE_ALIGN = 1; // Для выравнивания на линии левой стороной
+let Kp_R_LINE_ALIGN = 0.17, Ki_R_LINE_ALIGN = 0.001, Kd_R_LINE_ALIGN = 1; // Для выравнивания на линии правой стороной
 ///////////////
 
 // Управление захватом
 function Grab(state: boolean) {
-    brick.clearScreen();
     motors.mediumA.setBrake(true); // Устанавливаем ударжание мотора при остановке
-    if (state) motors.mediumA.run(-MOTOR_A_SPEED); // В одну сторону
-    else motors.mediumA.run(MOTOR_A_SPEED); // В другую сторону
+    if (state) motors.mediumA.run(-GRAB_MOTOR_SPEED); // В одну сторону
+    else motors.mediumA.run(GRAB_MOTOR_SPEED); // В другую сторону
     loops.pause(50); // Пауза для старта
     while (true) { // Проверяем, что мотор застопорился и не может больше двигаться
         let encA = motors.mediumA.angle();
@@ -122,7 +124,8 @@ function TestRGBToHSVToColor() {
 //LineFollowToIntersection("x", 60, true); // Движение по линии до пересечения
 //LineAlignment(true, 40, 500); // Выравнивание перпендикулярно на линии
 //AlignmentOnLine(500); // Выравнивание на линии
-//TurnToLine("l", 50); // Поворот в сторону с линии на линию
+//TurnToLine("l", true, 50); // Поворот в сторону с линии на линию
+//EncTurn("c", 90, 40); // Повороты на угол по энкодеру
 //Grab(true); // true - закрыть, false - открыть
 //TestRGBToHSVToColor(); // Тест перевода с RGB в HSV и в цвет
 //PIDs_Tune(6); // Тестирование ПИДов
@@ -138,11 +141,7 @@ function Main() { // Главная функция
     motors.mediumB.setRegulated(true); motors.mediumC.setRegulated(true); // Устанавливаем регулирование моторов
     ////
     //TestRGBToHSVToColor();
-    //PIDs_Tune(6);
-    //TurnToLine("l", 40);
-    //pause(2000);
-    TurnToLine("r", true , 40);
-    pause(10000);
+    //PIDs_Tune(3);
     Grab(true);
     DistMove(150, 50, false);
     LineFollowToDist(150, 50, false);
@@ -150,19 +149,24 @@ function Main() { // Главная функция
     pause(500);
     TurnToLine("l", true, 40);
     pause(500);
-    LineFollowToDist(350, 50, true);
+    LineFollowToDist(350, 30, true);
     pause(500);
     Grab(false);
     pause(500);
     DistMove(50, -50, true);
     pause(500);
-    TurnToLine("l", true, 40);
+    EncTurn("c", 180, 40);
+    //TurnToLine("l", true, 40);
     pause(500);
     LineFollowToIntersection("x", 40, true);
+    LineAlignment(false);
     pause(500);
-    TurnToLine("r", false, 40);
+    EncTurn("c", 90, 40);
+    AlignmentOnLine(1000);
+    //TurnToLine("r", false, 40);
     pause(500);
-    LineFollowToIntersection("l", 40, true);
+    //LineFollowToIntersection("l", 40, true); //LineFollowToDist(100, 50, true);
+    DistMove(100, 40, true);
     ////
     pause(1000);
     brick.exitProgram(); // Выход из программы

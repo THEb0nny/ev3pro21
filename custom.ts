@@ -1,6 +1,7 @@
 // УСТАНОВКИ
 const ENC_TURN_TIME_DEREGULATION = 500, ENC_TURN_MAX_TIME = 5000; // Время для поворота энкодерами
 const ENC_TURN_MAX_DEG_DIFFERENCE = 5; // Максимальная ошибка при повороте энкодерами
+const GRAY_DIVIDER = 2; // Деление серого для определение пересечения
 
 // Управление главными моторами
 function BaseMotorsControl(dir: number, speed: number) {
@@ -40,17 +41,6 @@ function AdaptationColorS(lineColorS: number, rawRefValColorS: number) {
         if (rawRefValColorS < blackRightColorS) blackRightColorS = rawRefValColorS;
         else if (rawRefValColorS > whiteRightColorS) whiteRightColorS = rawRefValColorS;
     }
-}
-
-// Движение по линии на расстояние
-function RampLineFollowToDist(distance: number, speed: number = 60, acelerationDist: number = 0, decelerationDist: number, setBreak: boolean = true, debug: boolean = false) {
-    let lMotorRotateOld = motors.mediumB.angle() * -1, rMotorRotateOld = motors.mediumC.angle();
-    let motorRotate = Math.round((distance / (Math.PI * WHEELS_D)) * 360); // Дистанция в мм
-    let lMotorRotate = motorRotate + lMotorRotateOld, rMotorRotate = motorRotate + rMotorRotateOld; // Сколько нужно пройти моторам включая накрученное до этого
-    automation.pid1.reset(); // Сброс ПИДа
-    automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка значений регулятору для правой стороны
-    automation.pid1.setControlSaturation(-100, 100); // Ограничения ПИДа
-    let prevTime = 0;
 }
 
 // Движение по линии на расстояние
@@ -107,7 +97,7 @@ function LineFollowToIntersectionX(speed: number = 60, continuation: boolean, se
         prevTime = currTime;
         let refLeftColorS = GetRefNormValColorS(2);
         let refRightColorS = GetRefNormValColorS(3);
-        if (refLeftColorS < greyLeftColorS && refRightColorS < greyRightColorS) break; // Выйти из цикла, если заехали на чёрное 2-мя датчиками
+        if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выйти из цикла, если заехали на чёрное 2-мя датчиками
         let error = refLeftColorS - refRightColorS; // Находим ошибку регулирования
         automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
         let u = automation.pid1.compute(loopTime, 0); // Регулятор
@@ -144,10 +134,10 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
         if (!sideLineIsFound) { // Пока линия не найдена подворачиваем в сторону линии
             if (refRightColorS <= greyRightColorS) { // Если линия найдена
                 sideLineIsFound = true; // Установить, что линию нашли
-                control.runInParallel(function () { music.playTone(Note.D, 10); }); // Сигнал для понимация
+                control.runInParallel(function () { music.playTone(Note.D, 200); }); // Сигнал для понимация
             } else BaseMotorsControl(-TURN_DIR_SEARCH_LINE, SPEED_AT_SEARCH_LINE); // Подворачиваем
         } else { // Нашли линию, двигаемся по линии
-            if (refLeftColorS < (greyLeftColorS / 1.5)) break; // Выходим из цикла регулирования, если правый заехал на чёрное
+            if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER) && refRightColorS > (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования, если правый заехал на чёрное
             let error = greyRightColorS - refRightColorS;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
@@ -190,11 +180,11 @@ function LineFollowToRightIntersection(speed: number = 60, continuation: boolean
         if (!sideLineIsFound) { // Заставляем подворачивать в сторону линии
             if (refLeftColorS <= greyLeftColorS) {
                 sideLineIsFound = true;// Установить, что линию нашли
-                control.runInParallel(function () { music.playTone(Note.C, 500); }); // Сигнал для понимация
+                control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация
             } else BaseMotorsControl(TURN_DIR_SEARCH_LINE, SPEED_AT_SEARCH_LINE);
         } else {
             // Нашли линию, двигаемся по линии
-            if (refRightColorS < (greyRightColorS / 1.5)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
+            if (refLeftColorS < whiteLeftColorS && refLeftColorS > (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
             let error = refLeftColorS - greyLeftColorS;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
@@ -428,14 +418,14 @@ function TurnToLine(side: string, xCrossType: boolean, speed: number = 50, debug
 function TurnToLineLeft(xCrossType: boolean, speed: number = 50, debug: boolean = false) {
     motors.mediumB.run(-speed); motors.mediumC.run(speed); // Начинаем поворот
     // Выполнение условий
-    while (true) { // Пока правый датчик на белом
-        let refRightColorS = GetRefNormValColorS(3);
-        if (refRightColorS == 0) continue;
-        if (refRightColorS < greyRightColorS) break; // Выходим, если датчик нашёл серое значение (линию)
-        loops.pause(5);
-    }
-    if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
     if (xCrossType) { // Линии - продолжения вперёд - нет)
+        while (true) { // Пока правый датчик на белом
+            let refRightColorS = GetRefNormValColorS(3);
+            if (refRightColorS == 0) continue;
+            if (refRightColorS < greyRightColorS) break; // Выходим, если датчик нашёл серое значение (линию)
+            loops.pause(5);
+        }
+        if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
         while (true) { // Пока левый датчик на белом
             let refLeftColorS = GetRefNormValColorS(2);
             if (refLeftColorS == 0) continue;
@@ -443,12 +433,26 @@ function TurnToLineLeft(xCrossType: boolean, speed: number = 50, debug: boolean 
             loops.pause(5);
         }
         if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
-    }
-    while (true) { // Пока левый датчик на чёрном (на линии)
-        let refLeftColorS = GetRefNormValColorS(2);
-        let refRightColorS = GetRefNormValColorS(3);
-        if (refLeftColorS > greyLeftColorS && refRightColorS > greyRightColorS) break; // Выходим, если датчики на белом
-        loops.pause(5);
+        while (true) { // Пока датчики не на белом
+            let refLeftColorS = GetRefNormValColorS(2);
+            let refRightColorS = GetRefNormValColorS(3);
+            if (refLeftColorS > greyLeftColorS && refRightColorS > greyRightColorS) break; // Выходим, если датчики на белом
+            loops.pause(5);
+        }
+    } else {
+        while (true) { // Пока левый датчик на белом
+            let refLeftColorS = GetRefNormValColorS(2);
+            if (refLeftColorS == 0) continue;
+            if (refLeftColorS < greyLeftColorS) break; // Выходим, если датчик нашёл серое значение (линию)
+            loops.pause(5);
+        }
+        if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
+        while (true) { // Пока датчики не на белом
+            let refLeftColorS = GetRefNormValColorS(2);
+            let refRightColorS = GetRefNormValColorS(3);
+            if (refLeftColorS > greyLeftColorS && refRightColorS > greyRightColorS) break; // Выходим, если датчики на белом
+            loops.pause(5);
+        }
     }
     motors.mediumB.setBrake(true); motors.mediumC.setBrake(true); // Устанавливаем удержание мотора для тормоза
     motors.mediumB.stop(); motors.mediumC.stop(); // Останавливаем моторы
@@ -460,14 +464,14 @@ function TurnToLineLeft(xCrossType: boolean, speed: number = 50, debug: boolean 
 function TurnToLineRight(xCrossType: boolean, speed: number = 50, debug: boolean = false) {
     motors.mediumB.run(speed); motors.mediumC.run(-speed); // Начинаем поворот
     // Выполнение условий
-    while (true) { // Пока левый датчик на белом
-        let refLeftColorS = GetRefNormValColorS(2);
-        if (refLeftColorS == 0) continue;
-        if (refLeftColorS < greyLeftColorS) break; // Выходим, если датчик нашёл серое значение (линию)
-        loops.pause(5);
-    }
-    if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
     if (xCrossType) { // Линии - продолжения вперёд - нет)
+        while (true) { // Пока левый датчик на белом
+            let refLeftColorS = GetRefNormValColorS(2);
+            if (refLeftColorS == 0) continue;
+            if (refLeftColorS < greyLeftColorS) break; // Выходим, если датчик нашёл серое значение (линию)
+            loops.pause(5);
+        }
+        if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
         while (true) { // Пока правый датчик на белом
             let refRightColorS = GetRefNormValColorS(3);
             if (refRightColorS == 0) continue;
@@ -475,12 +479,26 @@ function TurnToLineRight(xCrossType: boolean, speed: number = 50, debug: boolean
             loops.pause(5);
         }
         if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
-    }
-    while (true) {
-        let refLeftColorS = GetRefNormValColorS(2);
-        let refRightColorS = GetRefNormValColorS(3);
-        if (refLeftColorS > greyLeftColorS && refRightColorS > greyRightColorS) break; // Выходим, если датчики на белом
-        loops.pause(5);
+        while (true) {
+            let refLeftColorS = GetRefNormValColorS(2);
+            let refRightColorS = GetRefNormValColorS(3);
+            if (refLeftColorS > greyLeftColorS && refRightColorS > greyRightColorS) break; // Выходим, если датчики на белом
+            loops.pause(5);
+        }
+    } else {
+        while (true) { // Пока левый датчик на белом
+            let refRightColorS = GetRefNormValColorS(3);
+            if (refRightColorS == 0) continue;
+            if (refRightColorS < greyRightColorS) break; // Выходим, если датчик нашёл серое значение (линию)
+            loops.pause(5);
+        }
+        if (debug) control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
+        while (true) { // Пока датчики не на белом
+            let refLeftColorS = GetRefNormValColorS(2);
+            let refRightColorS = GetRefNormValColorS(3);
+            if (refLeftColorS > greyLeftColorS && refRightColorS > greyRightColorS) break; // Выходим, если датчики на белом
+            loops.pause(5);
+        }
     }
     motors.mediumB.setBrake(true); motors.mediumC.setBrake(true); // Устанавливаем удержание мотора для тормоза
     motors.mediumB.stop(); motors.mediumC.stop(); // Останавливаем моторы
@@ -491,7 +509,7 @@ function TurnToLineRight(xCrossType: boolean, speed: number = 50, debug: boolean
 // Выравнивание робота, когда линия между датчиками
 function AlignmentOnLine(time: number, debug: boolean = false) {
     automation.pid1.reset(); // Сброс ПИДа
-    automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка значений регулятору
+    automation.pid1.setGains(Kp_ALIGN_ON_LINE, Ki_ALIGN_ON_LINE, Kd_ALIGN_ON_LINE); // Установка значений регулятору
     automation.pid1.setControlSaturation(-100, 100); // Ограничение ПИДа
     control.timer7.reset();
     let prevTime = 0;
@@ -584,9 +602,9 @@ function PIDs_Tune(screen: number = 0) {
                     else if (screen == 1) EncTurn("l", 90, 50, true);
                     else if (screen == 2) EncTurn("r", 90, 50, true);
                     else if (screen == 6 || screen == 7) LineAlignment(true, 40, 10000, true);
-                    else if (screen == 3) LineFollowToIntersection("x", 60, true, true);
-                    else if (screen == 5) LineFollowToIntersection("l", 60, true, true);
-                    else if (screen == 4) LineFollowToIntersection("r", 60, true, true);
+                    else if (screen == 3) LineFollowToIntersection("x", 50, false, true);
+                    else if (screen == 5) LineFollowToIntersection("l", 50, false, true);
+                    else if (screen == 4) LineFollowToIntersection("r", 50, false, true);
                     else break;
                 } else {
                     if (!strState) strState = !strState;
