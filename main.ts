@@ -13,7 +13,7 @@ const TURN_DIR_SEARCH_LINE = 2; // Подворот при поиске лини
 const SPEED_AT_SEARCH_LINE = 20; // Скорость при поиске линии для езды одним датчиком
 const DIST_BEFORE_INTERSECTION_FOR_TURN = 30; // Дистанция для дополнительного прохождения для последующего поворота в мм
 const TIME_AFTER_TURN_TO_LINE_ALIGNMENT = 500; // Время для выравнивания после поворота до линии
-const GRAB_MOTOR_SPEED = 30; // Скорость работы средного мотора
+const GRAB_MOTOR_SPEED = 40; // Скорость работы средного мотора
 const N_HT_COLOR_S_MEASUREMENTS = 10; // Количество измерений датчиками цвета
 
 // Максимальные значения RGB (на белом цвете) для нормализации датчика определения цвета
@@ -41,7 +41,7 @@ function Grab(state: boolean) {
     motors.mediumA.setBrake(true); // Устанавливаем ударжание мотора при остановке
     if (state) motors.mediumA.run(-GRAB_MOTOR_SPEED); // В одну сторону
     else motors.mediumA.run(GRAB_MOTOR_SPEED); // В другую сторону
-    loops.pause(50); // Пауза для старта
+    loops.pause(75); // Пауза для старта
     while (true) { // Проверяем, что мотор застопорился и не может больше двигаться
         let encA = motors.mediumA.angle();
         loops.pause(15); // Задержка между измерениями
@@ -51,6 +51,7 @@ function Grab(state: boolean) {
     motors.mediumA.stop(); // Останавливаем мотор
 }
 
+// Проверка
 function СheckСolor(colorSensorSide: string): number {
     const NUM_YELLOW = 4, NUM_RED = 5, NUM_EMPTY = 0; // Номера цветов
     let colorSensor: sensors.HiTechnicColorSensor;
@@ -67,8 +68,7 @@ function СheckСolor(colorSensorSide: string): number {
         let colorRgb = colorSensor.getRGB();
         let colorWhite = colorSensor.getWhite(); // For HT
         let hsv = RgbToHsv(colorRgb, colorWhite, colorSensorRgbMax, true);
-        let currentColor = HsvToColor(hsv);
-        colors[i] = currentColor;
+        colors[i] = HsvToColor(hsv);
         loops.pause(50);
     }
     let yellowNum = colors.filter(item => item === NUM_YELLOW).length;
@@ -131,6 +131,8 @@ function Main() { // Главная функция
     let ledColor = СheckСolor("l");
     if (ledColor == 5) {
         EncTurn("c", -90, 40);
+    } else {
+        EncTurn("c", -180, 40);
     }
     ////
     pause(5000);
