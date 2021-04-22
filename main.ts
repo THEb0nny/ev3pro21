@@ -17,7 +17,7 @@ const GRAB_MOTOR_SPEED = 30; // Скорость работы средного �
 const N_HT_COLOR_S_MEASUREMENTS = 10; // Количество измерений датчиками цвета
 
 // Максимальные значения RGB (на белом цвете) для нормализации датчика определения цвета
-let lColorSensorRgbMax: number[] = [0, 0, 0];
+let lColorSensorRgbMax: number[] = [24, 22, 24];
 let rColorSensorRgbMax: number[] = [0, 0, 0];
 
 // Установка ПИД
@@ -70,11 +70,14 @@ function СheckСolor(colorSensorSide: string): number {
         let hsv = RgbToHsv(colorRgb, colorWhite, colorSensorRgbMax, true);
         let currentColor = HsvToColor(hsv);
         colors[i] = currentColor;
+        loops.pause(50);
     }
     let yellowNum = colors.filter(item => item === NUM_YELLOW).length;
     let redNum = colors.filter(item => item === NUM_RED).length;
     let emptyNum = colors.filter(item => item === NUM_EMPTY).length;
     let outColor = -1;
+    if (emptyNum > yellowNum) outColor = NUM_EMPTY;
+    else if (yellowNum > redNum) outColor = NUM_YELLOW
     if (emptyNum > yellowNum && emptyNum > redNum) outColor = NUM_EMPTY;
     else if (yellowNum > redNum && yellowNum > emptyNum) outColor = NUM_YELLOW
     else outColor = NUM_RED;
