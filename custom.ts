@@ -103,7 +103,7 @@ function LineFollowToIntersectionX(speed: number, continuation: boolean, setBrea
         loops.pause(10);
     }
     // Нужно проехать дополнительное расстояние для поворота или для съезда с линии?
-    if (continuation) DistMove(DIST_BEFORE_INTERSECTION_FOR_TURN, speed, setBreak);
+    if (continuation) DistMove(DIST_AFTER_INTERSECTION, speed, setBreak);
     else {
         motors.mediumB.setBrake(setBreak); motors.mediumC.setBrake(setBreak); // Установить жёсткий тормоз
         motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
@@ -146,7 +146,7 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
         loops.pause(10);
     }
     // Нужно проехать дополнительное расстояние для поворота или для съезда с линии?
-    if (continuation) DistMove(DIST_BEFORE_INTERSECTION_FOR_TURN, speed, setBreak);
+    if (continuation) DistMove(DIST_AFTER_INTERSECTION, speed, setBreak);
     else {
         motors.mediumB.setBrake(setBreak); motors.mediumC.setBrake(setBreak); // Установить жёсткий тормоз
         motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
@@ -190,7 +190,7 @@ function LineFollowToRightIntersection(speed: number = 60, continuation: boolean
         loops.pause(10);
     }
     // Нужно проехать дополнительное расстояние для поворота или для съезда с линии?
-    if (continuation) DistMove(DIST_BEFORE_INTERSECTION_FOR_TURN, speed, setBreak);
+    if (continuation) DistMove(DIST_AFTER_INTERSECTION, speed, setBreak);
     else {
         motors.mediumB.setBrake(setBreak); motors.mediumC.setBrake(setBreak); // Установить жёсткий тормоз
         motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
