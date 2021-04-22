@@ -84,44 +84,6 @@ function СheckСolor(colorSensorSide: string): number {
     return outColor;
 }
 
-// Поиск максимальных значений RGB для конвертации RGB в HSV, чтобы записать максимальные значения RGB
-function SearchSensorRgbMax(colorSensor: sensors.HiTechnicColorSensor, sensorRgbMax: number[]): number[] { // colorSensor: sensors.ColorSensor / sensors.HiTechnicColorSensor
-    let btnPressed = 0;
-    while (btnPressed < 2) {
-        let colorRgb = colorSensor.getRGB(); // colorSensor.rawRGB() для Lego Color Sensor
-        if (brick.buttonEnter.wasPressed()) { btnPressed++; pause(500); }
-        if (btnPressed == 0) {
-            brick.clearScreen();
-            brick.showValue("R", colorRgb[0], 1); brick.showValue("G", colorRgb[1], 2); brick.showValue("B", colorRgb[2], 3);
-        } else if (btnPressed == 1) {
-            sensorRgbMax[0] = Math.max(colorRgb[0], sensorRgbMax[0]);
-            sensorRgbMax[1] = Math.max(colorRgb[1], sensorRgbMax[1]);
-            sensorRgbMax[2] = Math.max(colorRgb[2], sensorRgbMax[2]);
-            brick.showValue("R_max", sensorRgbMax[0], 1); brick.showValue("G_max", sensorRgbMax[1], 2); brick.showValue("B_max", sensorRgbMax[2], 3);
-        }
-        loops.pause(10);
-    }
-    pause(500);
-    return sensorRgbMax;
-}
-
-// Тестирование перевода из RGB в HSV и получение цвета
-function TestRGBToHSVToColor() {
-    let colorSensor = sensors.hitechnicColor1;
-    lColorSensorRgbMax = SearchSensorRgbMax(colorSensor, lColorSensorRgbMax); // Найти максимальные значения
-    while (!brick.buttonEnter.wasPressed()) {
-        let colorRgb = colorSensor.getRGB();
-        let colorWhite = colorSensor.getWhite(); // For HT
-        //let colorWhite = colorRgb[0] + colorRgb[1] + colorRgb[2]; // For Lego
-        brick.clearScreen();
-        brick.showValue("R", colorRgb[0], 1); brick.showValue("G", colorRgb[1], 2); brick.showValue("B", colorRgb[2], 3); brick.showValue("W", colorWhite, 4);
-        let hsv = RgbToHsv(colorRgb, colorWhite, lColorSensorRgbMax, true);
-        let currentColor = HsvToColor(hsv);
-        brick.showValue("color", currentColor, 8);
-        loops.pause(10);
-    }
-}
-
 // Примеры функций
 //DistMove(400, 40, true); // Движение на расстояние
 //RampDistMove(400, 40, 0, 50); // Движение на расстояние с ускорением / замедлением
@@ -132,20 +94,21 @@ function TestRGBToHSVToColor() {
 //TurnToLine("l", true, 50); // Поворот в сторону с линии на линию
 //EncTurn("c", 90, 40); // Повороты на угол по энкодеру
 //Grab(true); // true - закрыть, false - открыть
-//TestRGBToHSVToColor(); // Тест перевода с RGB в HSV и в цвет
 //PIDs_Tune(6); // Тестирование ПИДов
 
 function Main() { // Главная функция
-    sensors.color2.light(LightIntensityMode.ReflectedRaw); sensors.color3.light(LightIntensityMode.ReflectedRaw); // Активируем датчики
-    sensors.hitechnicColor1._activated(); sensors.hitechnicColor4._activated();
     brick.clearScreen();
     brick.showString("         RUN", 6);
-    while (!brick.buttonEnter.wasPressed()) { loops.pause(10); }
+    while (!brick.buttonEnter.wasPressed()) {
+        // Активируем датчики
+        sensors.color2.light(LightIntensityMode.ReflectedRaw); sensors.color3.light(LightIntensityMode.ReflectedRaw);
+        sensors.hitechnicColor1.getAll(); sensors.hitechnicColor4.getAll();
+        loops.pause(10);
+    }
     brick.clearScreen();
     motors.mediumB.setInverted(true); motors.mediumC.setInverted(false); // Устанавливаем реверсы моторов
     motors.mediumB.setRegulated(true); motors.mediumC.setRegulated(true); // Устанавливаем регулирование моторов
     ////
-    //TestRGBToHSVToColor();
     //PIDs_Tune(3);
     Grab(true);
     DistMove(150, 50, false);
