@@ -1,7 +1,7 @@
 // УСТАНОВКИ
 const ENC_TURN_TIME_DEREGULATION = 500, ENC_TURN_MAX_TIME = 5000; // Время для поворота энкодерами
 const ENC_TURN_MAX_DEG_DIFFERENCE = 5; // Максимальная ошибка при повороте энкодерами
-const GRAY_DIVIDER = 2; // Деление серого для определение пересечения
+const GRAY_DIVIDER = 2; // Деление серого для определение более тёмной области пересечения
 
 // Управление главными моторами
 function BaseMotorsControl(dir: number, speed: number) {
@@ -34,17 +34,17 @@ function GetRefNormValColorS(lineColorS: number, needAdapt: boolean = false, isG
 
 // Адаптация значений белого и чёрного датчиков
 function AdaptationColorS(lineColorS: number, rawRefValColorS: number) {
-    if (lineColorS == 2) {
-        if (rawRefValColorS < blackLeftColorS) blackLeftColorS = rawRefValColorS;
-        else if (rawRefValColorS > whiteLeftColorS) whiteLeftColorS = rawRefValColorS;
+    if (lineColorS == 2) { // Знаки меняются местами, потому что в режиме сырых значений меньше и больше - наоборот
+        if (rawRefValColorS > blackLeftColorS) blackLeftColorS = rawRefValColorS;
+        else if (rawRefValColorS < whiteLeftColorS) whiteLeftColorS = rawRefValColorS;
     } else if (lineColorS == 3) {
-        if (rawRefValColorS < blackRightColorS) blackRightColorS = rawRefValColorS;
-        else if (rawRefValColorS > whiteRightColorS) whiteRightColorS = rawRefValColorS;
+        if (rawRefValColorS > blackRightColorS) blackRightColorS = rawRefValColorS;
+        else if (rawRefValColorS < whiteRightColorS) whiteRightColorS = rawRefValColorS;
     }
 }
 
 // Движение по линии на расстояние
-function LineFollowToDist(distance: number, speed: number = 60, setBreak: boolean = true, debug: boolean = false) {
+function LineFollowToDist(distance: number, speed: number, setBreak: boolean = true, debug: boolean = false) {
     let lMotorRotateOld = motors.mediumB.angle() * -1, rMotorRotateOld = motors.mediumC.angle();
     let motorRotate = Math.round((distance / (Math.PI * WHEELS_D)) * 360); // Дистанция в мм
     let lMotorRotate = motorRotate + lMotorRotateOld, rMotorRotate = motorRotate + rMotorRotateOld; // Сколько нужно пройти моторам включая накрученное до этого
@@ -63,10 +63,8 @@ function LineFollowToDist(distance: number, speed: number = 60, setBreak: boolea
         BaseMotorsControl(u, speed); // Устанавливаем на моторы
         if (debug) {
             brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1);
-            brick.showValue("refRightColorS", refRightColorS, 2);
-            brick.showValue("error", error, 3);
-            brick.showValue("u", u, 4);
+            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
+            brick.showValue("error", error, 3); brick.showValue("u", u, 4);
         }
         loops.pause(10);
     }
@@ -76,18 +74,14 @@ function LineFollowToDist(distance: number, speed: number = 60, setBreak: boolea
 }
 
 // Движение по линии до перекрёстка
-function LineFollowToIntersection(crossType: string, speed: number = 60, continuation: boolean = true, setBreak: boolean = true, debug: boolean = false) {
-    if (crossType == "x" || crossType == "t") { // X-образный или T-образный перекрёсток
-        LineFollowToIntersectionX(speed, continuation, setBreak, debug);
-    } else if (crossType == "l") { // Пересечение налево
-        LineFollowToLeftIntersection(speed, continuation, setBreak, debug);
-    } else if (crossType == "r") { // Пересечение направо
-        LineFollowToRightIntersection(speed, continuation, setBreak, debug);
-    }
+function LineFollowToIntersection(crossType: string, speed: number, continuation: boolean, setBreak: boolean = true, debug: boolean = false) {
+    if (crossType == "x" || crossType == "t") LineFollowToIntersectionX(speed, continuation, setBreak, debug); // X-образный или T-образный перекрёсток
+    else if (crossType == "l") LineFollowToLeftIntersection(speed, continuation, setBreak, debug); // Пересечение налево
+    else if (crossType == "r") LineFollowToRightIntersection(speed, continuation, setBreak, debug); // Пересечение направо
 }
 
 // Движение по линии до перкрёстка двемя датчиками
-function LineFollowToIntersectionX(speed: number = 60, continuation: boolean, setBreak: boolean, debug: boolean = false) {
+function LineFollowToIntersectionX(speed: number, continuation: boolean, setBreak: boolean = true, debug: boolean = false) {
     automation.pid1.reset(); // Сброс ПИДа
     automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка значений регулятору
     automation.pid1.setControlSaturation(-100, 100); // Ограничения ПИДа
@@ -104,9 +98,7 @@ function LineFollowToIntersectionX(speed: number = 60, continuation: boolean, se
         BaseMotorsControl(u, speed);
         if (debug) {
             brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
-            brick.showValue("error", error, 3);
-            brick.showValue("u", u, 4);
+            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2); brick.showValue("error", error, 3); brick.showValue("u", u, 4);
         }
         loops.pause(10);
     }
@@ -144,15 +136,12 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
             BaseMotorsControl(u, speed);
             if (debug) {
                 brick.clearScreen();
-                brick.showValue("refRightColorS", refRightColorS, 2);
-                brick.showValue("error", error, 3);
-                brick.showValue("u", u, 4);
+                brick.showValue("refRightColorS", refRightColorS, 2); brick.showValue("error", error, 3); brick.showValue("u", u, 4);
             }
         }
         if (debug) {
             if (!sideLineIsFound) brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1);
-            brick.showValue("refRightColorS", refRightColorS, 2);
+            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
         }
         loops.pause(10);
     }
@@ -184,22 +173,19 @@ function LineFollowToRightIntersection(speed: number = 60, continuation: boolean
             } else BaseMotorsControl(TURN_DIR_SEARCH_LINE, SPEED_AT_SEARCH_LINE);
         } else {
             // Нашли линию, двигаемся по линии
-            if (refLeftColorS > (greyLeftColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
+            if (refLeftColorS > (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
             let error = refLeftColorS - greyLeftColorS;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
             BaseMotorsControl(u, speed);
             if (debug) {
                 brick.clearScreen();
-                brick.showValue("refLeftColorS", refLeftColorS, 1);
-                brick.showValue("error", error, 3);
-                brick.showValue("u", u, 4);
+                brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("error", error, 3); brick.showValue("u", u, 4);
             }
         }
         if (debug) {
             if (!sideLineIsFound) brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1);
-            brick.showValue("refRightColorS", refRightColorS, 2);
+            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
         }
         loops.pause(10);
     }
@@ -213,7 +199,7 @@ function LineFollowToRightIntersection(speed: number = 60, continuation: boolean
 }
 
 // Выравнивание на линии перпендикулярно
-function LineAlignment(lineIsForward: boolean, speed: number = 40, alignmentTime: number = 1000, debug: boolean = false) {
+function LineAlignment(lineIsForward: boolean, speed: number, alignmentTime: number = 1000, debug: boolean = false) {
     speed = Math.min(Math.abs(speed), 100);
     automation.pid1.reset(); automation.pid2.reset(); // Сброс ПИДов
     automation.pid1.setGains(Kp_L_LINE_ALIGN, Ki_L_LINE_ALIGN, Kd_L_LINE_ALIGN); // Установка значений регулятору для левой стороны
@@ -232,25 +218,23 @@ function LineAlignment(lineIsForward: boolean, speed: number = 40, alignmentTime
         automation.pid2.setPoint(errorR); // Устанавливаем ошибку в регулятор правой стороны
         let uL = automation.pid1.compute(loopTime, 0) * multiplaer; // Ругулятор левой стороны
         let uR = automation.pid2.compute(loopTime, 0) * multiplaer; // Ругулятор правой стороны
+        uL = Math.constrain(uL, -speed, speed); uR = Math.constrain(uR, -speed, speed);
         motors.mediumB.run(uL); motors.mediumC.run(uR); // Устанавливаем на моторы
         if (debug) {
             brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1);
-            brick.showValue("refRightColorS", refRightColorS, 2);
-            brick.showValue("errorL", errorL, 3);
-            brick.showValue("errorR", errorR, 4);
-            brick.showValue("uL", uL, 5);
-            brick.showValue("uR", uR, 6);
+            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
+            brick.showValue("errorL", errorL, 3); brick.showValue("errorR", errorR, 4);
+            brick.showValue("uL", uL, 5); brick.showValue("uR", uR, 6);
         }
         loops.pause(10);
     }
     motors.mediumB.setBrake(true); motors.mediumC.setBrake(true); // Установить жёсткий тормоз
     motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
-    control.runInParallel(function () { music.playTone(Note.E, 50); }); // Сигнал о завершении
+    control.runInParallel(function () { music.playTone(Note.E, 250); }); // Сигнал о завершении
 }
 
 // Движение на заданное расстояние
-function DistMove(distance: number, speed: number = 30, setBreak: boolean = true) {
+function DistMove(distance: number, speed: number, setBreak: boolean = true) {
     let motorRotate = Math.round((distance / (Math.PI * WHEELS_D)) * 360); // Дистанция в мм
     motors.mediumB.setBrake(setBreak); motors.mediumC.setBrake(setBreak); // Установить тип торможения
     motors.mediumB.setPauseOnRun(false); motors.mediumC.setPauseOnRun(false); // Отключаем
@@ -259,7 +243,7 @@ function DistMove(distance: number, speed: number = 30, setBreak: boolean = true
 }
 
 // Движение на заданное расстояние с ускорением и замедлением
-function RampDistMove(distance: number, speed: number = 30, acelerationDist: number = 0, decelerationDist: number) {
+function RampDistMove(distance: number, speed: number, acelerationDist: number = 0, decelerationDist: number) {
     let acelerationRotate = (acelerationDist == 0 ? 0 : Math.round((acelerationDist / (Math.PI * WHEELS_D)) * 360));
     let decelerationRotate = (decelerationDist == 0 ? 0 : Math.round((decelerationDist / (Math.PI * WHEELS_D)) * 360));
     let normMotorRotate = Math.round((distance / (Math.PI * WHEELS_D)) * 360) - acelerationRotate - decelerationRotate; // Дистанция в мм
@@ -271,18 +255,14 @@ function RampDistMove(distance: number, speed: number = 30, acelerationDist: num
 }
 
 // Повороты с помощью энкодеров
-function EncTurn(relative: string, degress: number = 0, speed: number = 30, debug: boolean = false) {
-    if (relative == "c") {
-        EncTurnRelativeCenterWheels(degress, speed, debug);
-    } else if (relative == "l") {
-        EncTurnRelativeLeftWheel(degress, speed, debug);
-    } else if (relative == "r") {
-        EncTurnRelativeRightWheel(degress, speed, debug);
-    }
+function EncTurn(relative: string, degress: number = 0, speed: number, debug: boolean = false) {
+    if (relative == "c") EncTurnRelativeCenterWheels(degress, speed, debug);
+    else if (relative == "l") EncTurnRelativeLeftWheel(degress, speed, debug);
+    else if (relative == "r") EncTurnRelativeRightWheel(degress, speed, debug);
 }
 
 // Поворот относительно центра колёс
-function EncTurnRelativeCenterWheels(degress: number, speed: number = 30, debug: boolean = false) {
+function EncTurnRelativeCenterWheels(degress: number, speed: number, debug: boolean = false) {
     let lMotorEncOld = motors.mediumB.angle() * -1, rMotorEncOld = motors.mediumC.angle(); // Получаем текущие углы энкодеров
     let motorRotate = Math.round((degress * WHEELS_W) / WHEELS_D); // Вычисления угла поворота
     let lMotorRotate = lMotorEncOld + motorRotate, rMotorRotate = rMotorEncOld + -motorRotate; // Вычисляем окончательные положения моторов
@@ -301,6 +281,7 @@ function EncTurnRelativeCenterWheels(degress: number, speed: number = 30, debug:
         let error = 0 - (errorL - errorR);
         automation.pid2.setPoint(error);
         let u = automation.pid2.compute(loopTime, 0) * -1;
+        u = Math.constrain(u, -speed, speed);
         if (!isTurned && Math.abs(error) <= ENC_TURN_MAX_DEG_DIFFERENCE && Math.abs(u) <= 10) { // Довернулись?
             isTurned = true; // Повернулись до нужного градуса
             control.timer8.reset();
@@ -312,18 +293,16 @@ function EncTurnRelativeCenterWheels(degress: number, speed: number = 30, debug:
             brick.clearScreen();
             brick.showValue("motorRotate", motorRotate, 1);
             brick.showValue("lMotorEnc", lMotorEnc, 2); brick.showValue("rMotorEnc", rMotorEnc, 3);
-            brick.showValue("errorL", errorL, 4); brick.showValue("errorR", errorR, 5);
-            brick.showValue("error", error, 6);
-            brick.showValue("u", u, 7);
+            brick.showValue("errorL", errorL, 4); brick.showValue("errorR", errorR, 5); brick.showValue("error", error, 6); brick.showValue("u", u, 7);
         }
-        pause(10);
+        loops.pause(10);
     }
     motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
     control.runInParallel(function () { music.playTone(Note.C, 50); }); // Сигнал о завершении
 }
 
 // Поворот относительно левого колеса
-function EncTurnRelativeLeftWheel(degress: number, speed: number = 30, debug: boolean = false) {
+function EncTurnRelativeLeftWheel(degress: number, speed: number, debug: boolean = false) {
     let rMotorEncOld = motors.mediumC.angle(); // Получаем текущие углы энкодеров
     let motorRotate = ((degress * WHEELS_W) / WHEELS_D) * 2; // Вычисления угла поворота
     motorRotate = rMotorEncOld + motorRotate; // Вычисляем окончательные положения мотора
@@ -348,23 +327,21 @@ function EncTurnRelativeLeftWheel(degress: number, speed: number = 30, debug: bo
         if (isTurned == true && control.timer8.millis() >= ENC_TURN_TIME_DEREGULATION || control.timer7.millis() >= ENC_TURN_MAX_TIME) break; // Дорегулируемся
         automation.pid2.setPoint(error);
         let u = automation.pid2.compute(loopTime, 0);
+        u = Math.constrain(u, -speed, speed);
         motors.mediumC.run(u);
         if (debug) {
             brick.clearScreen();
-            brick.showValue("motorRotate", motorRotate, 1);
-            brick.showValue("rMotorEnc", rMotorEnc, 2);
-            brick.showValue("errorL", error, 4);
-            brick.showValue("error", error, 5);
-            brick.showValue("u", u, 7);
+            brick.showValue("motorRotate", motorRotate, 1); brick.showValue("rMotorEnc", rMotorEnc, 2);
+            brick.showValue("errorL", error, 4); brick.showValue("error", error, 5); brick.showValue("u", u, 7);
         }
-        pause(10);
+        loops.pause(10);
     }
     motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
     control.runInParallel(function () { music.playTone(Note.C, 50); }); // Сигнал о завершении
 }
 
 // Поворот относительно правого колеса
-function EncTurnRelativeRightWheel(degress: number, speed: number = 30, debug: boolean = false) {
+function EncTurnRelativeRightWheel(degress: number, speed: number, debug: boolean = false) {
     let lMotorEncOld = motors.mediumB.angle() * -1; // Получаем текущие углы энкодеров
     let motorRotate = ((degress * WHEELS_W) / WHEELS_D) * 2; // Вычисления угла поворота
     motorRotate += lMotorEncOld; // Вычисляем окончательные положения мотора
@@ -389,33 +366,29 @@ function EncTurnRelativeRightWheel(degress: number, speed: number = 30, debug: b
         if (isTurned == true && control.timer8.millis() >= ENC_TURN_TIME_DEREGULATION || control.timer7.millis() >= ENC_TURN_MAX_TIME) break; // Дорегулируемся
         automation.pid2.setPoint(error);
         let u = automation.pid2.compute(loopTime, 0);
+        u = Math.constrain(u, -speed, speed);
         motors.mediumB.run(u);
         if (debug) {
             brick.clearScreen();
-            brick.showValue("motorRotate", motorRotate, 1);
-            brick.showValue("lMotorEnc", lMotorEnc, 2);
-            brick.showValue("errorL", error, 4);
-            brick.showValue("error", error, 5);
-            brick.showValue("u", u, 6);
+            brick.showValue("motorRotate", motorRotate, 1); brick.showValue("lMotorEnc", lMotorEnc, 2);
+            brick.showValue("errorL", error, 4); brick.showValue("error", error, 5); brick.showValue("u", u, 6);
         }
-        pause(10);
+        loops.pause(10);
     }
     motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
     control.runInParallel(function () { music.playTone(Note.C, 50); }); // Сигнал о завершении
 }
 
 // Поворот в сторону с линии на линию
-function TurnToLine(side: string, xCrossType: boolean, speed: number = 50, debug: boolean = false) {
-    if (side == "l") {
-        TurnToLineLeft(xCrossType, speed, debug);
-    } else if (side == "r") {
-        TurnToLineRight(xCrossType, speed, debug);
-    } else music.playSoundEffectUntilDone(sounds.informationError);
+function TurnToLine(side: string, xCrossType: boolean, speed: number, debug: boolean = false) {
+    if (side == "l") TurnToLineLeft(xCrossType, speed, debug);
+    else if (side == "r") TurnToLineRight(xCrossType, speed, debug);
+    else music.playSoundEffectUntilDone(sounds.informationError);
     if (side == "l" || side == "r") control.runInParallel(function () { music.playTone(Note.D, 200); }); // Сигнал для понимация о завершении
 }
 
 // Поворот с линии на линию слева
-function TurnToLineLeft(xCrossType: boolean, speed: number = 50, debug: boolean = false) {
+function TurnToLineLeft(xCrossType: boolean, speed: number, debug: boolean = false) {
     motors.mediumB.run(-speed); motors.mediumC.run(speed); // Начинаем поворот
     // Выполнение условий
     if (xCrossType) { // Линии - продолжения вперёд - нет)
@@ -461,7 +434,7 @@ function TurnToLineLeft(xCrossType: boolean, speed: number = 50, debug: boolean 
 }
 
 // Поворот с линии на линию справа
-function TurnToLineRight(xCrossType: boolean, speed: number = 50, debug: boolean = false) {
+function TurnToLineRight(xCrossType: boolean, speed: number, debug: boolean = false) {
     motors.mediumB.run(speed); motors.mediumC.run(-speed); // Начинаем поворот
     // Выполнение условий
     if (xCrossType) { // Линии - продолжения вперёд - нет)

@@ -78,6 +78,8 @@ function СheckСolor(colorSensorSide: string): number {
     let outColor = -1;
     if (emptyNum > yellowNum) outColor = NUM_EMPTY;
     else if (yellowNum > redNum) outColor = NUM_YELLOW
+    if (emptyNum > yellowNum && emptyNum > redNum) outColor = NUM_EMPTY;
+    else if (yellowNum > redNum && yellowNum > emptyNum) outColor = NUM_YELLOW
     else outColor = NUM_RED;
     return outColor;
 }
@@ -97,7 +99,7 @@ function SearchSensorRgbMax(colorSensor: sensors.HiTechnicColorSensor, sensorRgb
             sensorRgbMax[2] = Math.max(colorRgb[2], sensorRgbMax[2]);
             brick.showValue("R_max", sensorRgbMax[0], 1); brick.showValue("G_max", sensorRgbMax[1], 2); brick.showValue("B_max", sensorRgbMax[2], 3);
         }
-        pause(10);
+        loops.pause(10);
     }
     pause(500);
     return sensorRgbMax;
@@ -116,7 +118,7 @@ function TestRGBToHSVToColor() {
         let hsv = RgbToHsv(colorRgb, colorWhite, lColorSensorRgbMax, true);
         let currentColor = HsvToColor(hsv);
         brick.showValue("color", currentColor, 8);
-        pause(10);
+        loops.pause(10);
     }
 }
 
@@ -162,7 +164,7 @@ function Main() { // Главная функция
     //AlignmentOnLine(500);
     pause(500);
     LineFollowToIntersection("x", 40, true);
-    LineAlignment(false);
+    LineAlignment(false, 30, 500);
     DistMove(20, 40, true);
     pause(500);
     EncTurn("c", 90, 40); //TurnToLine("r", false, 40);
