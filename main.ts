@@ -1,7 +1,7 @@
 ///// УСТАНОВКИ
 // Значения датчиков
-let blackLeftColorS = 622, whiteLeftColorS = 501; // Левый
-let blackRightColorS = 644, whiteRightColorS = 523; // Правый
+let blackLeftColorS = 645, whiteLeftColorS = 503; // Левый
+let blackRightColorS = 648, whiteRightColorS = 511; // Правый
 // Значения серого для 2-х датчиков
 let greyLeftColorS = (blackLeftColorS + whiteLeftColorS) / 2; // Серый левого
 greyLeftColorS = GetRefNormValColorS(2, false, true); // Получаем окончательные значения серого левого датчика
@@ -17,7 +17,7 @@ const GRAB_MOTOR_SPEED = 30; // Скорость работы средного �
 const N_HT_COLOR_S_MEASUREMENTS = 10; // Количество измерений датчиками цвета
 
 // Максимальные значения RGB (на белом цвете) для нормализации датчика определения цвета
-let lColorSensorRgbMax: number[] = [15, 13, 16];
+let lColorSensorRgbMax: number[] = [24, 22, 24];
 let rColorSensorRgbMax: number[] = [0, 0, 0];
 
 // Установка ПИД
@@ -52,7 +52,7 @@ function Grab(state: boolean) {
 }
 
 function СheckСolor(colorSensorSide: string): number {
-    const NUM_YELLOW = 4, NUM_RED = 5; // Номера цветов
+    const NUM_YELLOW = 4, NUM_RED = 5, NUM_EMPTY = 0; // Номера цветов
     let colorSensor: sensors.HiTechnicColorSensor;
     let colorSensorRgbMax: number[];
     if (colorSensorSide == "l") {
@@ -70,11 +70,14 @@ function СheckСolor(colorSensorSide: string): number {
         let hsv = RgbToHsv(colorRgb, colorWhite, colorSensorRgbMax, true);
         let currentColor = HsvToColor(hsv);
         colors[i] = currentColor;
+        loops.pause(50);
     }
     let yellowNum = colors.filter(item => item === NUM_YELLOW).length;
     let redNum = colors.filter(item => item === NUM_RED).length;
+    let emptyNum = colors.filter(item => item === NUM_EMPTY).length;
     let outColor = -1;
-    if (yellowNum > redNum) return outColor = NUM_YELLOW;
+    if (emptyNum > yellowNum) outColor = NUM_EMPTY;
+    else if (yellowNum > redNum) outColor = NUM_YELLOW
     else outColor = NUM_RED;
     return outColor;
 }
@@ -104,7 +107,7 @@ function SearchSensorRgbMax(colorSensor: sensors.HiTechnicColorSensor, sensorRgb
 function TestRGBToHSVToColor() {
     let colorSensor = sensors.hitechnicColor1;
     lColorSensorRgbMax = SearchSensorRgbMax(colorSensor, lColorSensorRgbMax); // Найти максимальные значения
-    while (true) {
+    while (!brick.buttonEnter.wasPressed()) {
         let colorRgb = colorSensor.getRGB();
         let colorWhite = colorSensor.getWhite(); // For HT
         //let colorWhite = colorRgb[0] + colorRgb[1] + colorRgb[2]; // For Lego
@@ -134,7 +137,7 @@ function Main() { // Главная функция
     sensors.color2.light(LightIntensityMode.ReflectedRaw); sensors.color3.light(LightIntensityMode.ReflectedRaw); // Активируем датчики
     sensors.hitechnicColor1._activated(); sensors.hitechnicColor4._activated();
     brick.clearScreen();
-    brick.showString("             RUN", 6);
+    brick.showString("         RUN", 6);
     while (!brick.buttonEnter.wasPressed()) { loops.pause(10); }
     brick.clearScreen();
     motors.mediumB.setInverted(true); motors.mediumC.setInverted(false); // Устанавливаем реверсы моторов
@@ -147,7 +150,7 @@ function Main() { // Главная функция
     LineFollowToDist(150, 50, false);
     LineFollowToIntersection("l", 40, true);
     pause(500);
-    TurnToLine("l", true, 40);
+    EncTurn("c", -90, 40); //TurnToLine("l", true, 40);
     pause(500);
     LineFollowToDist(350, 30, true);
     pause(500);
@@ -155,20 +158,23 @@ function Main() { // Главная функция
     pause(500);
     DistMove(50, -50, true);
     pause(500);
-    EncTurn("c", 180, 40);
-    //TurnToLine("l", true, 40);
+    EncTurn("c", 180, 40); //TurnToLine("l", true, 40);
+    //AlignmentOnLine(500);
     pause(500);
     LineFollowToIntersection("x", 40, true);
     LineAlignment(false);
+    DistMove(20, 40, true);
     pause(500);
-    EncTurn("c", 90, 40);
+    EncTurn("c", 90, 40); //TurnToLine("r", false, 40);
     AlignmentOnLine(1000);
-    //TurnToLine("r", false, 40);
     pause(500);
-    //LineFollowToIntersection("l", 40, true); //LineFollowToDist(100, 50, true);
-    DistMove(100, 40, true);
+    LineFollowToDist(100, 50, true); //LineFollowToIntersection("l", 40, true); //DistMove(100, 40, true);
+    let color = СheckСolor("l");
+    if (color == 5) {
+        EncTurn("c", -90, 40);
+    }
     ////
-    pause(1000);
+    pause(5000);
     brick.exitProgram(); // Выход из программы
 }
 
