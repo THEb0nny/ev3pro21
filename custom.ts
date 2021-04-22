@@ -129,7 +129,7 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
                 control.runInParallel(function () { music.playTone(Note.D, 200); }); // Сигнал для понимация
             } else BaseMotorsControl(-TURN_DIR_SEARCH_LINE, SPEED_AT_SEARCH_LINE); // Подворачиваем
         } else { // Нашли линию, двигаемся по линии
-            if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования, если правый заехал на чёрное
+            if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования, если правый заехал на чёрное
             let error = greyRightColorS - refRightColorS;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
