@@ -58,8 +58,7 @@ function СheckСolor(colorSensorSide: string): number {
     if (colorSensorSide == "l") {
         colorSensor = sensors.hitechnicColor1;
         colorSensorRgbMax = lColorSensorRgbMax;
-    }
-    else if (colorSensorSide == "r") {
+    } else if (colorSensorSide == "r") {
         colorSensor = sensors.hitechnicColor4;
         colorSensorRgbMax = rColorSensorRgbMax;
     }
@@ -76,11 +75,9 @@ function СheckСolor(colorSensorSide: string): number {
     let redNum = colors.filter(item => item === NUM_RED).length;
     let emptyNum = colors.filter(item => item === NUM_EMPTY).length;
     let outColor = -1;
-    if (emptyNum > yellowNum) outColor = NUM_EMPTY;
-    else if (yellowNum > redNum) outColor = NUM_YELLOW
-    if (emptyNum > yellowNum && emptyNum > redNum) outColor = NUM_EMPTY;
-    else if (yellowNum > redNum && yellowNum > emptyNum) outColor = NUM_YELLOW
-    else outColor = NUM_RED;
+    if (yellowNum > redNum && yellowNum > emptyNum) outColor = NUM_YELLOW;
+    else if (redNum > yellowNum && redNum > emptyNum) outColor = NUM_RED;
+    else outColor = NUM_YELLOW;
     return outColor;
 }
 
@@ -94,9 +91,12 @@ function СheckСolor(colorSensorSide: string): number {
 //TurnToLine("l", true, 50); // Поворот в сторону с линии на линию
 //EncTurn("c", 90, 40); // Повороты на угол по энкодеру
 //Grab(true); // true - закрыть, false - открыть
+
 //PIDs_Tune(6); // Тестирование ПИДов
 
 function Main() { // Главная функция
+    motors.mediumB.setInverted(true); motors.mediumC.setInverted(false); // Устанавливаем реверсы моторов
+    motors.mediumB.setRegulated(true); motors.mediumC.setRegulated(true); // Устанавливаем регулирование моторов
     brick.clearScreen();
     brick.showString("         RUN", 6);
     while (!brick.buttonEnter.wasPressed()) {
@@ -106,8 +106,6 @@ function Main() { // Главная функция
         loops.pause(10);
     }
     brick.clearScreen();
-    motors.mediumB.setInverted(true); motors.mediumC.setInverted(false); // Устанавливаем реверсы моторов
-    motors.mediumB.setRegulated(true); motors.mediumC.setRegulated(true); // Устанавливаем регулирование моторов
     ////
     //PIDs_Tune(3);
     Grab(true);
@@ -130,8 +128,8 @@ function Main() { // Главная функция
     AlignmentOnLine(500);
     pause(100);
     LineFollowToDist(100, 50, true); //LineFollowToIntersection("l", 40, true); //DistMove(100, 40, true);
-    let color = СheckСolor("l");
-    if (color == 5) {
+    let ledColor = СheckСolor("l");
+    if (ledColor == 5) {
         EncTurn("c", -90, 40);
     }
     ////
