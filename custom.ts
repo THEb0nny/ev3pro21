@@ -127,7 +127,7 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
             if (refRightColorS <= greyRightColorS) { // Если линия найдена
                 sideLineIsFound = true; // Установить, что линию нашли
                 control.runInParallel(function () { music.playTone(Note.D, 200); }); // Сигнал для понимация
-            } else BaseMotorsControl(-TURN_DIR_SEARCH_LINE, SPEED_AT_SEARCH_LINE); // Подворачиваем
+            } else BaseMotorsControl(-TURN_DIR_SEARCH_LINE, (SPEED_AT_SEARCH_LINE > 0 ? SPEED_AT_SEARCH_LINE : speed)); // Подворачиваем
         } else { // Нашли линию, двигаемся по линии
             if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования, если правый заехал на чёрное
             let error = greyRightColorS - refRightColorS;
@@ -170,7 +170,7 @@ function LineFollowToRightIntersection(speed: number = 60, continuation: boolean
             if (refLeftColorS <= greyLeftColorS) {
                 sideLineIsFound = true;// Установить, что линию нашли
                 control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация
-            } else BaseMotorsControl(TURN_DIR_SEARCH_LINE, SPEED_AT_SEARCH_LINE);
+            } else BaseMotorsControl(TURN_DIR_SEARCH_LINE, (SPEED_AT_SEARCH_LINE > 0 ? SPEED_AT_SEARCH_LINE : speed));
         } else {
             // Нашли линию, двигаемся по линии
             if (refLeftColorS > (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
