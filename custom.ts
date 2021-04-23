@@ -11,6 +11,21 @@ function BaseMotorsControl(dir: number, speed: number) {
     motors.mediumB.run(mB); motors.mediumC.run(mC);
 }
 
+// Управление захватом
+function Grab(state: boolean) {
+    motors.mediumA.setBrake(true); // Устанавливаем ударжание мотора при остановке
+    if (state) motors.mediumA.run(-GRAB_MOTOR_SPEED); // В одну сторону
+    else motors.mediumA.run(GRAB_MOTOR_SPEED); // В другую сторону
+    loops.pause(DELAY_FOR_START_MANIP); // Пауза для старта
+    while (true) { // Проверяем, что мотор застопорился и не может больше двигаться
+        let encA = motors.mediumA.angle();
+        loops.pause(15); // Задержка между измерениями
+        let encB = motors.mediumA.angle();
+        if (Math.abs(Math.abs(encB) - Math.abs(encA)) <= 1) break;
+    }
+    motors.mediumA.stop(); // Останавливаем мотор
+}
+
 // Обработка значений с датчиков цвета для линии
 function GetRefNormValColorS(lineColorS: number, needAdapt: boolean = false, isGray: boolean = false): number {
     let rawRefValColorS = 0, blackValColorS = 0, whiteValColorS = 0;

@@ -15,6 +15,7 @@ const DIST_AFTER_INTERSECTION = 30; // Дистанция для дополни�
 const TIME_AFTER_TURN_TO_LINE_ALIGNMENT = 500; // Время для выравнивания после поворота до линии
 const GRAB_MOTOR_SPEED = 40; // Скорость работы средного мотора
 const N_HT_COLOR_S_MEASUREMENTS = 10; // Количество измерений датчиками цвета
+const DELAY_FOR_START_MANIP = 75; // Задержка для старта моторов перед определением стопора мотора
 
 // Максимальные значения RGB (на белом цвете) для нормализации датчика определения цвета
 let lColorSensorRgbMax: number[] = [24, 22, 24];
@@ -36,21 +37,6 @@ let Kp_L_LINE_ALIGN = 0.17, Ki_L_LINE_ALIGN = 0.001, Kd_L_LINE_ALIGN = 1; // Д�
 let Kp_R_LINE_ALIGN = 0.17, Ki_R_LINE_ALIGN = 0.001, Kd_R_LINE_ALIGN = 1; // Для выравнивания на линии правой стороной
 ///////////////
 
-// Управление захватом
-function Grab(state: boolean) {
-    motors.mediumA.setBrake(true); // Устанавливаем ударжание мотора при остановке
-    if (state) motors.mediumA.run(-GRAB_MOTOR_SPEED); // В одну сторону
-    else motors.mediumA.run(GRAB_MOTOR_SPEED); // В другую сторону
-    loops.pause(75); // Пауза для старта
-    while (true) { // Проверяем, что мотор застопорился и не может больше двигаться
-        let encA = motors.mediumA.angle();
-        loops.pause(15); // Задержка между измерениями
-        let encB = motors.mediumA.angle();
-        if (Math.abs(Math.abs(encB) - Math.abs(encA)) <= 1) break;
-    }
-    motors.mediumA.stop(); // Останавливаем мотор
-}
-
 // Проверка
 function СheckСolor(colorSensorSide: string): number {
     const NUM_YELLOW = 4, NUM_RED = 5, NUM_EMPTY = 0; // Номера цветов
@@ -63,11 +49,12 @@ function СheckСolor(colorSensorSide: string): number {
         colorSensor = sensors.hitechnicColor4;
         colorSensorRgbMax = rColorSensorRgbMax;
     }
-    let colors: number[];
+    let colors: number[] = [];
     for (let i = 0; i < N_HT_COLOR_S_MEASUREMENTS; i++) {
-        let colorRgb = colorSensor.getRGB();
-        let colorWhite = colorSensor.getWhite(); // For HT
+        let colorRgb = sensors.hitechnicColor1.getRGB();
+        let colorWhite = sensors.hitechnicColor1.getWhite(); // Only for HT
         let hsv = RgbToHsv(colorRgb, colorWhite, colorSensorRgbMax, true);
+        brick.showString(hsv[0].toString() + " " + hsv[1].toString() + " " + hsv[2].toString(), 10);
         colors[i] = HsvToColor(hsv);
         loops.pause(50);
     }
@@ -108,7 +95,7 @@ function Main() { // Главная функция
     brick.clearScreen();
     ////
     //PIDs_Tune(3);
-    Grab(true);
+    /*Grab(true);
     DistMove(150, 50, false);
     LineFollowToIntersection("l", 40, true);
     EncTurn("c", -90, 40); //TurnToLine("l", true, 40);
@@ -128,7 +115,9 @@ function Main() { // Главная функция
     AlignmentOnLine(500);
     pause(100);
     LineFollowToDist(100, 50, true); //LineFollowToIntersection("l", 40, true); //DistMove(100, 40, true);
+    */
     let ledColor = СheckСolor("l");
+    brick.showValue("ledColor", ledColor, 11);
     if (ledColor == 5) {
         EncTurn("c", -90, 40);
     } else {
@@ -136,7 +125,7 @@ function Main() { // Главная функция
     }
     ////
     pause(5000);
-    brick.exitProgram(); // Выход из программы
+    //brick.exitProgram(); // Выход из программы
 }
 
 Main(); // Запуск главной функции
