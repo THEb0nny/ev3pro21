@@ -95,7 +95,7 @@ function Main() { // Главная функция
     brick.clearScreen();
     ////
     //PIDs_Tune(3);
-    /*Grab(true);
+    Grab(true);
     DistMove(150, 50, false);
     LineFollowToIntersection("l", 40, true);
     EncTurn("c", -90, 40); //TurnToLine("l", true, 40);
@@ -115,7 +115,6 @@ function Main() { // Главная функция
     AlignmentOnLine(500);
     pause(100);
     LineFollowToDist(100, 50, true); //LineFollowToIntersection("l", 40, true); //DistMove(100, 40, true);
-    */
     let ledColor = СheckСolor("l");
     brick.showValue("ledColor", ledColor, 11);
     if (ledColor == 5) {
