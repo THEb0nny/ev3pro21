@@ -1,5 +1,5 @@
 // УСТАНОВКИ
-const ENC_TURN_TIME_DEREGULATION = 500, ENC_TURN_MAX_TIME = 5000; // Время для поворота энкодерами
+const ENC_TURN_TIME_DEREGULATION = 300, ENC_TURN_MAX_TIME = 5000; // Время для поворота энкодерами
 const ENC_TURN_MAX_DEG_DIFFERENCE = 5; // Максимальная ошибка при повороте энкодерами
 const GRAY_DIVIDER = 2; // Деление серого для определение более тёмной области пересечения
 
@@ -144,7 +144,7 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
                 control.runInParallel(function () { music.playTone(Note.D, 200); }); // Сигнал для понимация
             } else BaseMotorsControl(-TURN_DIR_SEARCH_LINE, (SPEED_AT_SEARCH_LINE > 0 ? SPEED_AT_SEARCH_LINE : speed)); // Подворачиваем
         } else { // Нашли линию, двигаемся по линии
-            if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования, если правый заехал на чёрное
+            if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER)/* && refRightColorS > (greyRightColorS / GRAY_DIVIDER)*/) break; // Выходим из цикла регулирования, если правый заехал на чёрное
             let error = greyRightColorS - refRightColorS;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
@@ -188,7 +188,7 @@ function LineFollowToRightIntersection(speed: number = 60, continuation: boolean
             } else BaseMotorsControl(TURN_DIR_SEARCH_LINE, (SPEED_AT_SEARCH_LINE > 0 ? SPEED_AT_SEARCH_LINE : speed));
         } else {
             // Нашли линию, двигаемся по линии
-            if (refLeftColorS > (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
+            if (/*refLeftColorS > (greyLeftColorS / GRAY_DIVIDER) && */refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
             let error = refLeftColorS - greyLeftColorS;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
@@ -586,13 +586,13 @@ function PIDs_Tune(screen: number = 0) {
             brick.showValue((str == 8 && !strState ? "> " : (str == 8 && strState ? ">>> " : "")) + "Kd_H", Kd_H, 12);
             if (brick.buttonEnter.wasPressed()) { // Считываем нажатие ENTER
                 if (str == 1 || str == 5) { // Нажали на строку BREAK?
-                    if (screen == 0) EncTurn("c", 90, 50, true);
-                    else if (screen == 1) EncTurn("l", 90, 50, true);
-                    else if (screen == 2) EncTurn("r", 90, 50, true);
+                    if (screen == 0) EncTurn("c", 90, 40, true);
+                    else if (screen == 1) EncTurn("l", 90, 40, true);
+                    else if (screen == 2) EncTurn("r", 90, 40, true);
                     else if (screen == 6 || screen == 7) LineAlignment(true, 40, 10000, true);
-                    else if (screen == 3) LineFollowToIntersection("x", 50, false, true);
-                    else if (screen == 5) LineFollowToIntersection("l", 50, false, true);
-                    else if (screen == 4) LineFollowToIntersection("r", 50, false, true);
+                    else if (screen == 3) LineFollowToIntersection("x", 35, false, true);
+                    else if (screen == 5) LineFollowToIntersection("l", 35, false, true);
+                    else if (screen == 4) LineFollowToIntersection("r", 35, false, true);
                     else break;
                 } else {
                     if (!strState) strState = !strState;

@@ -1,7 +1,7 @@
 ///// УСТАНОВКИ
 // Значения датчиков
-let blackLeftColorS = 645, whiteLeftColorS = 503; // Левый
-let blackRightColorS = 648, whiteRightColorS = 511; // Правый
+let blackLeftColorS = 643, whiteLeftColorS = 516; // Левый
+let blackRightColorS = 646, whiteRightColorS = 512; // Правый
 // Значения серого для 2-х датчиков
 let greyLeftColorS = (blackLeftColorS + whiteLeftColorS) / 2; // Серый левого
 greyLeftColorS = GetRefNormValColorS(2, false, true); // Получаем окончательные значения серого левого датчика
@@ -14,17 +14,17 @@ const SPEED_AT_SEARCH_LINE = 20; // Скорость при поиске лин�
 const DIST_AFTER_INTERSECTION = 30; // Дистанция для дополнительного прохождения для последующего поворота в мм
 const TIME_AFTER_TURN_TO_LINE_ALIGNMENT = 500; // Время для выравнивания после поворота до линии
 const GRAB_MOTOR_SPEED = 40; // Скорость работы средного мотора
-const N_HT_COLOR_S_MEASUREMENTS = 10; // Количество измерений датчиками цвета
+const N_HT_COLOR_S_MEASUREMENTS = 15; // Количество измерений датчиками цвета
 const DELAY_FOR_START_MANIP = 75; // Задержка для старта моторов перед определением стопора мотора
 
 // Максимальные значения RGB (на белом цвете) для нормализации датчика определения цвета
-let lColorSensorRgbMax: number[] = [24, 22, 24];
-let rColorSensorRgbMax: number[] = [0, 0, 0];
+let lColorSensorRgbMax: number[] = [20, 18, 20];
+let rColorSensorRgbMax: number[] = [18, 17, 19];
 
 // Установка ПИД
-let Kp_LINE_FOLLOW_2S = 0.1, Ki_LINE_FOLLOW_2S = 0, Kd_LINE_FOLLOW_2S = 2.4; // Для езды по линии с двумя датчиками
-let Kp_LINE_FOLLOW_LS = 0.1, Ki_LINE_FOLLOW_LS = 0, Kd_LINE_FOLLOW_LS = 1.7; // Для езды левым датчиком по линии
-let Kp_LINE_FOLLOW_RS = 0.1, Ki_LINE_FOLLOW_RS = 0, Kd_LINE_FOLLOW_RS = 1.7; // Для езды правым датчиком по линии
+let Kp_LINE_FOLLOW_2S = 0.1, Ki_LINE_FOLLOW_2S = 0, Kd_LINE_FOLLOW_2S = 0.5; // Для езды по линии с двумя датчиками
+let Kp_LINE_FOLLOW_LS = 0.1, Ki_LINE_FOLLOW_LS = 0, Kd_LINE_FOLLOW_LS = 2.0; // Для езды левым датчиком по линии
+let Kp_LINE_FOLLOW_RS = 0.1, Ki_LINE_FOLLOW_RS = 0, Kd_LINE_FOLLOW_RS = 2.0; // Для езды правым датчиком по линии
 
 let Kp_TURN_CENTER = 0.2, Ki_TURN_CENTER = 0, Kd_TURN_CENTER = 2; // Для поворота относительно центра
 
@@ -40,6 +40,7 @@ let Kp_R_LINE_ALIGN = 0.17, Ki_R_LINE_ALIGN = 0.001, Kd_R_LINE_ALIGN = 1; // Д�
 // Проверка
 function СheckСolor(colorSensorSide: string): number {
     const NUM_YELLOW = 4, NUM_RED = 5, NUM_EMPTY = 0; // Номера цветов
+    let kYellow = 0, kRed = 0, kEmpty = 0;
     let colorSensor: sensors.HiTechnicColorSensor;
     let colorSensorRgbMax: number[];
     if (colorSensorSide == "l") {
@@ -56,16 +57,14 @@ function СheckСolor(colorSensorSide: string): number {
         let hsv = RgbToHsv(colorRgb, colorWhite, colorSensorRgbMax, true);
         brick.showString(hsv[0].toString() + " " + hsv[1].toString() + " " + hsv[2].toString(), 10);
         colors[i] = HsvToColor(hsv);
+        if (colors[i] == NUM_YELLOW) kYellow++;
+        else if (colors[i] == NUM_RED) kRed++;
+        else if (colors[i] == NUM_EMPTY) kEmpty++;
         loops.pause(50);
     }
-    let yellowNum = colors.filter(item => item === NUM_YELLOW).length;
-    let redNum = colors.filter(item => item === NUM_RED).length;
-    let emptyNum = colors.filter(item => item === NUM_EMPTY).length;
-    let outColor = -1;
-    if (yellowNum > redNum && yellowNum > emptyNum) outColor = NUM_YELLOW;
-    else if (redNum > yellowNum && redNum > emptyNum) outColor = NUM_RED;
-    else outColor = NUM_YELLOW;
-    return outColor;
+    if (kYellow > kRed && kYellow > kEmpty) return NUM_YELLOW;
+    else if (kRed > kYellow && kRed > kEmpty) return NUM_RED;
+    else return NUM_EMPTY;
 }
 
 // Примеры функций
@@ -94,34 +93,8 @@ function Main() { // Главная функция
     }
     brick.clearScreen();
     ////
-    //PIDs_Tune(3);
+    PIDs_Tune(3);
     Grab(true);
-    DistMove(150, 50, false);
-    LineFollowToIntersection("l", 40, true);
-    EncTurn("c", -90, 40); //TurnToLine("l", true, 40);
-    LineFollowToDist(350, 30, true);
-    Grab(false);
-    pause(100);
-    DistMove(50, -50, true);
-    pause(100);
-    EncTurn("c", 180, 40); //TurnToLine("l", true, 40);
-    //AlignmentOnLine(500);
-    pause(100);
-    LineFollowToIntersection("x", 40, true);
-    LineAlignment(false, 30, 500);
-    DistMove(20, 40, true);
-    pause(100);
-    EncTurn("c", 90, 40); //TurnToLine("r", false, 40);
-    AlignmentOnLine(500);
-    pause(100);
-    LineFollowToDist(100, 50, true); //LineFollowToIntersection("l", 40, true); //DistMove(100, 40, true);
-    let ledColor = СheckСolor("l");
-    brick.showValue("ledColor", ledColor, 11);
-    if (ledColor == 5) {
-        EncTurn("c", -90, 40);
-    } else {
-        EncTurn("c", -180, 40);
-    }
     ////
     pause(5000);
     //brick.exitProgram(); // Выход из программы
