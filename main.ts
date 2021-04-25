@@ -70,6 +70,7 @@ function СheckСolor(colorSensorSide: string): number {
 // Примеры функций
 //DistMove(400, 40, true); // Движение на расстояние
 //RampDistMove(400, 40, 0, 50); // Движение на расстояние с ускорением / замедлением
+//MoveToIntersection(40, true); // Движение до перекрёстка
 //LineFollowToDist(300, 50, "2s", true); // Движение по линии на расстояние
 //LineFollowToIntersection("x", 60, true); // Движение по линии до пересечения
 //LineAlignment(true, 40, 500); // Выравнивание перпендикулярно на линии
