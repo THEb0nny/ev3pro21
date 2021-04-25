@@ -95,56 +95,6 @@ function Main() { // Главная функция
     ////
     PIDs_Tune(3);
     Grab(true);
-    let ledColor = СheckСolor("l");
-    brick.showValue("ledColor", ledColor, 11);
-    DistMove(150, 50, false);
-    if (ledColor == 4) {
-        LineFollowToIntersection("l", 40, true);
-        EncTurn("c", -90, 40); //TurnToLine("l", true, 40);
-        LineFollowToDist(370, 30, true);
-        Grab(false);
-        pause(100);
-        DistMove(50, -50, true);
-        pause(100);
-        EncTurn("c", 180, 40); //TurnToLine("l", true, 40);
-        //AlignmentOnLine(500);
-        pause(100);
-        LineFollowToIntersection("x", 40, true);
-        LineAlignment(false, 30, 500);
-        DistMove(20, 40, true);
-        pause(100);
-        EncTurn("c", 90, 40); //TurnToLine("r", false, 40);
-        AlignmentOnLine(500);
-        pause(100);
-        LineFollowToDist(100, 50, true); //LineFollowToIntersection("l", 40, true); //DistMove(100, 40, true);
-    } else {
-        LineFollowToIntersection("r", 40, true, false);
-        LineFollowToIntersection("r", 40, true, false);
-        LineFollowToIntersection("r", 40, true, false);
-        LineFollowToIntersection("r", 40, true, false);
-        EncTurn("c", 90, 40);
-        LineFollowToDist(370, 30, true);
-        Grab(false);
-        DistMove(50, -50, true);
-        EncTurn("c", 180, 40);
-        LineFollowToDist(320, 30, true);
-        EncTurn("c", -90, 40);
-        LineFollowToIntersection("l", 40, false, false);
-        LineFollowToIntersection("l", 40, false, false);
-        LineFollowToIntersection("l", 40, false, false);
-
-        pause(100);
-    }
-    ledColor = СheckСolor("l");
-    brick.showValue("ledColor", ledColor, 11);
-    if (ledColor == 5) {
-        DistMove(20, 40, true);
-        EncTurn("c", -90, 40);
-        DistMove(100, 40, true);
-        Grab(true);
-    } else {
-        EncTurn("c", -180, 40);
-    }
     ////
     pause(5000);
     //brick.exitProgram(); // Выход из программы
