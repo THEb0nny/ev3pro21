@@ -1,5 +1,5 @@
 // УСТАНОВКИ
-const ENC_TURN_TIME_DEREGULATION = 300, ENC_TURN_MAX_TIME = 5000; // Время для поворота энкодерами
+const ENC_TURN_TIME_DEREGULATION = 300, ENC_TURN_MAX_TIME = 4000; // Время для поворота энкодерами
 const ENC_TURN_MAX_DEG_DIFFERENCE = 5; // Максимальная ошибка при повороте энкодерами
 const GRAY_DIVIDER = 2; // Деление серого для определение более тёмной области пересечения
 
@@ -59,26 +59,46 @@ function AdaptationColorS(lineColorS: number, rawRefValColorS: number) {
 }
 
 // Движение по линии на расстояние
-function LineFollowToDist(distance: number, speed: number, setBreak: boolean = true, debug: boolean = false) {
+function LineFollowToDist(distance: number, speed: number, typeFollow: string = "2s", setBreak: boolean = true, debug: boolean = false) {
     let lMotorRotateOld = motors.mediumB.angle() * -1, rMotorRotateOld = motors.mediumC.angle();
     let motorRotate = Math.round((distance / (Math.PI * WHEELS_D)) * 360); // Дистанция в мм
     let lMotorRotate = motorRotate + lMotorRotateOld, rMotorRotate = motorRotate + rMotorRotateOld; // Сколько нужно пройти моторам включая накрученное до этого
     automation.pid1.reset(); // Сброс ПИДа
-    automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка значений регулятору для правой стороны
+    if (typeFollow == "2s") { // Установка значений регулятору
+        automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S);
+    } else if (typeFollow == "ls") {
+        automation.pid1.setGains(Kp_LINE_FOLLOW_LS, Ki_LINE_FOLLOW_LS, Kd_LINE_FOLLOW_LS);
+    } else if (typeFollow == "rs") {
+        automation.pid1.setGains(Kp_LINE_FOLLOW_RS, Ki_LINE_FOLLOW_RS, Kd_LINE_FOLLOW_RS);
+    } else return;
     automation.pid1.setControlSaturation(-100, 100); // Ограничения ПИДа
     let prevTime = 0;
+    let error = 0;
+    let refLeftColorS = 0, refRightColorS = 0;
     while (motors.mediumB.angle() * -1 <= lMotorRotate || motors.mediumC.angle() <= rMotorRotate) { // Пока моторы не достигнули градусов вращения
         let currTime = control.millis(), loopTime = currTime - prevTime;
         prevTime = currTime;
-        let refLeftColorS = GetRefNormValColorS(2);
-        let refRightColorS = GetRefNormValColorS(3);
-        let error = refLeftColorS - refRightColorS;
+        if (typeFollow == "2s") {
+            refLeftColorS = GetRefNormValColorS(2);
+            refRightColorS = GetRefNormValColorS(3);
+            error = refLeftColorS - refRightColorS;
+        } else if (typeFollow == "ls") {
+            refLeftColorS = GetRefNormValColorS(2);
+            error = refLeftColorS - greyLeftColorS;
+        } else if (typeFollow == "rs") {
+            refRightColorS = GetRefNormValColorS(3);
+            error = greyRightColorS - refRightColorS;
+        }
         automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
         let u = automation.pid1.compute(loopTime, 0); // Ругулятор
         BaseMotorsControl(u, speed); // Устанавливаем на моторы
         if (debug) {
             brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
+            if (typeFollow == "2s") {
+                brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
+            } else if (typeFollow == "ls") {
+                brick.showValue("refLeftColorS", refLeftColorS, 1);
+            } else if (typeFollow == "rs") brick.showValue("refRightColorS", refRightColorS, 2);
             brick.showValue("error", error, 3); brick.showValue("u", u, 4);
         }
         loops.pause(10);
@@ -86,6 +106,28 @@ function LineFollowToDist(distance: number, speed: number, setBreak: boolean = t
     motors.mediumB.setBrake(setBreak); motors.mediumC.setBrake(setBreak); // Установить жёсткий тормоз
     motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
     control.runInParallel(function () { music.playTone(Note.E, 500); }); // Сигнал для понимация о завершении
+}
+
+// Движение до пересечения - перекрёстка
+function MoveToIntersection(speed: number, continuation: boolean, setBreak: boolean = true, debug: boolean = false) {
+    while (true) {
+        let refLeftColorS = GetRefNormValColorS(2);
+        let refRightColorS = GetRefNormValColorS(3);
+        if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER) && refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выйти из цикла, если заехали на чёрное 2-мя датчиками
+        BaseMotorsControl(0, speed);
+        if (debug) {
+            brick.clearScreen();
+            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
+        }
+        loops.pause(10);
+    }
+    // Нужно проехать дополнительное расстояние для поворота или для съезда с линии?
+    if (continuation) DistMove(DIST_AFTER_INTERSECTION, speed, setBreak);
+    else {
+        motors.mediumB.setBrake(setBreak); motors.mediumC.setBrake(setBreak); // Установить жёсткий тормоз
+        motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
+    }
+    control.runInParallel(function () { music.playTone(Note.C, 500); }); // Сигнал для понимация
 }
 
 // Движение по линии до перекрёстка
@@ -246,6 +288,36 @@ function LineAlignment(lineIsForward: boolean, speed: number, alignmentTime: num
     motors.mediumB.setBrake(true); motors.mediumC.setBrake(true); // Установить жёсткий тормоз
     motors.mediumB.stop(); motors.mediumC.stop(); // Остановка моторов
     control.runInParallel(function () { music.playTone(Note.E, 250); }); // Сигнал о завершении
+}
+
+// Выравнивание робота, когда линия между датчиками
+function AlignmentOnLine(time: number, debug: boolean = false) {
+    automation.pid1.reset(); // Сброс ПИДа
+    automation.pid1.setGains(Kp_ALIGN_ON_LINE, Ki_ALIGN_ON_LINE, Kd_ALIGN_ON_LINE); // Установка значений регулятору
+    automation.pid1.setControlSaturation(-100, 100); // Ограничение ПИДа
+    control.timer7.reset();
+    let prevTime = 0;
+    while (control.timer7.millis() < time) { // Пока моторы не достигнули градусов вращения
+        let currTime = control.millis(), loopTime = currTime - prevTime;
+        prevTime = currTime;
+        let refLeftColorS = GetRefNormValColorS(2);
+        let refRightColorS = GetRefNormValColorS(3);
+        let error = refLeftColorS - refRightColorS;
+        automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
+        let u = automation.pid1.compute(loopTime, 0); // Ругулятор
+        motors.mediumB.run(u); motors.mediumC.run(-u);
+        if (debug) {
+            brick.clearScreen();
+            brick.showValue("refLeftColorS", refLeftColorS, 1);
+            brick.showValue("refRightColorS", refRightColorS, 2);
+            brick.showValue("error", error, 3);
+            brick.showValue("u", u, 4);
+        }
+        loops.pause(10);
+    }
+    motors.mediumB.setBrake(true); motors.mediumC.setBrake(true); // Устанавливаем удержание мотора для тормоза
+    motors.mediumB.stop(); motors.mediumC.stop(); // Останавливаем моторы
+    control.runInParallel(function () { music.playTone(Note.E, 100); }); // Сигнал для понимация состояния
 }
 
 // Движение на заданное расстояние
@@ -492,36 +564,6 @@ function TurnToLineRight(xCrossType: boolean, speed: number, debug: boolean = fa
     motors.mediumB.stop(); motors.mediumC.stop(); // Останавливаем моторы
     control.runInParallel(function () { music.playTone(Note.C, 200); }); // Сигнал для понимация состояния
     AlignmentOnLine(TIME_AFTER_TURN_TO_LINE_ALIGNMENT, debug); // Выравниваемся на линии
-}
-
-// Выравнивание робота, когда линия между датчиками
-function AlignmentOnLine(time: number, debug: boolean = false) {
-    automation.pid1.reset(); // Сброс ПИДа
-    automation.pid1.setGains(Kp_ALIGN_ON_LINE, Ki_ALIGN_ON_LINE, Kd_ALIGN_ON_LINE); // Установка значений регулятору
-    automation.pid1.setControlSaturation(-100, 100); // Ограничение ПИДа
-    control.timer7.reset();
-    let prevTime = 0;
-    while (control.timer7.millis() < time) { // Пока моторы не достигнули градусов вращения
-        let currTime = control.millis(), loopTime = currTime - prevTime;
-        prevTime = currTime;
-        let refLeftColorS = GetRefNormValColorS(2);
-        let refRightColorS = GetRefNormValColorS(3);
-        let error = refLeftColorS - refRightColorS;
-        automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
-        let u = automation.pid1.compute(loopTime, 0); // Ругулятор
-        motors.mediumB.run(u); motors.mediumC.run(-u);
-        if (debug) {
-            brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1);
-            brick.showValue("refRightColorS", refRightColorS, 2);
-            brick.showValue("error", error, 3);
-            brick.showValue("u", u, 4);
-        }
-        loops.pause(10);
-    }
-    motors.mediumB.setBrake(true); motors.mediumC.setBrake(true); // Устанавливаем удержание мотора для тормоза
-    motors.mediumB.stop(); motors.mediumC.stop(); // Останавливаем моторы
-    control.runInParallel(function () { music.playTone(Note.E, 100); }); // Сигнал для понимация состояния
 }
 
 // Настройка ПИДов
