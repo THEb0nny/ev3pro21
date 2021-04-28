@@ -1,5 +1,5 @@
 // УСТАНОВКИ
-const ENC_TURN_TIME_DEREGULATION = 300, ENC_TURN_MAX_TIME = 4000; // Время для поворота энкодерами
+const ENC_TURN_TIME_DEREGULATION = 300, ENC_TURN_MAX_TIME = 3500; // Время для поворота энкодерами
 const ENC_TURN_MAX_DEG_DIFFERENCE = 5; // Максимальная ошибка при повороте энкодерами
 const GRAY_DIVIDER = 2; // Деление серого для определение более тёмной области пересечения
 
@@ -19,7 +19,7 @@ function Grab(state: boolean) {
     loops.pause(DELAY_FOR_START_MANIP); // Пауза для старта
     while (true) { // Проверяем, что мотор застопорился и не может больше двигаться
         let encA = motors.mediumA.angle();
-        loops.pause(15); // Задержка между измерениями
+        loops.pause(20); // Задержка между измерениями
         let encB = motors.mediumA.angle();
         if (Math.abs(Math.abs(encB) - Math.abs(encA)) <= 1) break;
     }
@@ -133,14 +133,16 @@ function MoveToIntersection(speed: number, continuation: boolean, setBreak: bool
 // Движение по линии до перекрёстка
 function LineFollowToIntersection(crossType: string, speed: number, continuation: boolean, setBreak: boolean = true, debug: boolean = false) {
     if (crossType == "x" || crossType == "t") LineFollowToIntersectionX(speed, continuation, setBreak, debug); // X-образный или T-образный перекрёсток
-    else if (crossType == "l") LineFollowToLeftIntersection(speed, continuation, setBreak, debug); // Пересечение налево
-    else if (crossType == "r") LineFollowToRightIntersection(speed, continuation, setBreak, debug); // Пересечение направо
+    else if (crossType == "l") LineFollowToLeftIntersection(1, speed, continuation, setBreak, debug); // Пересечение налево
+    else if (crossType == "r") LineFollowToRightIntersection(1, speed, continuation, setBreak, debug); // Пересечение направо
+    else if (crossType == "l2s") LineFollowToLeftIntersection(2, speed, continuation, setBreak, debug); // Пересечение налево с двумя датчиками
+    else if (crossType == "r2s") LineFollowToRightIntersection(2, speed, continuation, setBreak, debug); // Пересечение направо с двемя датчиками
 }
 
 // Движение по линии до перкрёстка двемя датчиками
 function LineFollowToIntersectionX(speed: number, continuation: boolean, setBreak: boolean = true, debug: boolean = false) {
     automation.pid1.reset(); // Сброс ПИДа
-    automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка значений регулятору
+    automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка коэффициентов регулятору
     automation.pid1.setControlSaturation(-100, 100); // Ограничения ПИДа
     let prevTime = 0;
     while (true) {
@@ -169,12 +171,15 @@ function LineFollowToIntersectionX(speed: number, continuation: boolean, setBrea
 }
 
 // Движение по линии до левого перекрёстка правым датчиком
-function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean, setBreak: boolean, debug: boolean = false) {
+function LineFollowToLeftIntersection(sensors: number, speed: number = 60, continuation: boolean, setBreak: boolean, debug: boolean = false) {
     let sideLineIsFound = false; // Флажок для линии сбоку
     automation.pid1.reset(); // Сброс ПИДа
-    automation.pid1.setGains(Kp_LINE_FOLLOW_RS, Ki_LINE_FOLLOW_RS, Kd_LINE_FOLLOW_RS); // Установка значений регулятору
+    if (sensors == 1) automation.pid1.setGains(Kp_LINE_FOLLOW_RS, Ki_LINE_FOLLOW_RS, Kd_LINE_FOLLOW_RS); // Установка коэффициентов регулятору
+    else if (sensors == 2) automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка коэффициентов регулятору
+    else return;
     automation.pid1.setControlSaturation(-100, 100); // Ограничения ПИДа
     let prevTime = 0;
+    let error = 0;
     while (true) {
         let currTime = control.millis(), loopTime = currTime - prevTime;
         prevTime = currTime;
@@ -187,7 +192,9 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
             } else BaseMotorsControl(-TURN_DIR_SEARCH_LINE, (SPEED_AT_SEARCH_LINE > 0 ? SPEED_AT_SEARCH_LINE : speed)); // Подворачиваем
         } else { // Нашли линию, двигаемся по линии
             if (refLeftColorS < (greyLeftColorS / GRAY_DIVIDER)/* && refRightColorS > (greyRightColorS / GRAY_DIVIDER)*/) break; // Выходим из цикла регулирования, если правый заехал на чёрное
-            let error = greyRightColorS - refRightColorS;
+            if (sensors == 1) error = greyRightColorS - refRightColorS; // Находим ошибку регулирования
+            else if (sensors == 2) error = refLeftColorS - refRightColorS; // Находим ошибку регулирования
+            else return;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
             BaseMotorsControl(u, speed);
@@ -212,12 +219,15 @@ function LineFollowToLeftIntersection(speed: number = 60, continuation: boolean,
 }
 
 // Движение по линии до правого перекрёстка левым датчиком
-function LineFollowToRightIntersection(speed: number = 60, continuation: boolean, setBreak: boolean, debug: boolean = false) {
+function LineFollowToRightIntersection(sensors: number, speed: number = 60, continuation: boolean, setBreak: boolean, debug: boolean = false) {
     let sideLineIsFound = false; // Флажок для линии сбоку
     automation.pid1.reset(); // Сброс ПИДа
-    automation.pid1.setGains(Kp_LINE_FOLLOW_LS, Ki_LINE_FOLLOW_LS, Kd_LINE_FOLLOW_LS); // Установка значений регулятору
+    if (sensors == 1) automation.pid1.setGains(Kp_LINE_FOLLOW_LS, Ki_LINE_FOLLOW_LS, Kd_LINE_FOLLOW_LS); // Установка коэффициентов регулятору
+    else if (sensors == 2) automation.pid1.setGains(Kp_LINE_FOLLOW_2S, Ki_LINE_FOLLOW_2S, Kd_LINE_FOLLOW_2S); // Установка коэффициентов регулятору
+    else return;
     automation.pid1.setControlSaturation(-100, 100); // Ограничения ПИДа
     let prevTime = 0;
+    let error = 0;
     while (true) {
         let currTime = control.millis(), loopTime = currTime - prevTime;
         prevTime = currTime;
@@ -231,7 +241,9 @@ function LineFollowToRightIntersection(speed: number = 60, continuation: boolean
         } else {
             // Нашли линию, двигаемся по линии
             if (/*refLeftColorS > (greyLeftColorS / GRAY_DIVIDER) && */refRightColorS < (greyRightColorS / GRAY_DIVIDER)) break; // Выходим из цикла регулирования по линии, если правый заехал на чёрное
-            let error = refLeftColorS - greyLeftColorS;
+            if (sensors == 1) error = refLeftColorS - greyLeftColorS; // Находим ошибку регулирования
+            else if (sensors == 2) error = refLeftColorS - refRightColorS; // Находим ошибку регулирования
+            else return;
             automation.pid1.setPoint(error); // Устанавливаем ошибку в регулятор
             let u = automation.pid1.compute(loopTime, 0); // Регулятор
             BaseMotorsControl(u, speed);
@@ -308,10 +320,8 @@ function AlignmentOnLine(time: number, debug: boolean = false) {
         motors.mediumB.run(u); motors.mediumC.run(-u);
         if (debug) {
             brick.clearScreen();
-            brick.showValue("refLeftColorS", refLeftColorS, 1);
-            brick.showValue("refRightColorS", refRightColorS, 2);
-            brick.showValue("error", error, 3);
-            brick.showValue("u", u, 4);
+            brick.showValue("refLeftColorS", refLeftColorS, 1); brick.showValue("refRightColorS", refRightColorS, 2);
+            brick.showValue("error", error, 3); brick.showValue("u", u, 4);
         }
         loops.pause(10);
     }
@@ -631,7 +641,7 @@ function PIDs_Tune(screen: number = 0) {
                     if (screen == 0) EncTurn("c", 90, 40, true);
                     else if (screen == 1) EncTurn("l", 90, 40, true);
                     else if (screen == 2) EncTurn("r", 90, 40, true);
-                    else if (screen == 6 || screen == 7) LineAlignment(true, 40, 10000, true);
+                    else if (screen == 6 || screen == 7) LineAlignment(true, 40, 5000, true);
                     else if (screen == 3) LineFollowToIntersection("x", 35, false, true);
                     else if (screen == 5) LineFollowToIntersection("l", 35, false, true);
                     else if (screen == 4) LineFollowToIntersection("r", 35, false, true);
@@ -681,8 +691,8 @@ function PIDs_Tune(screen: number = 0) {
                         else if (str == 3) Ki_R_LINE_ALIGN -= Ki_H;
                         else if (str == 4) Kd_R_LINE_ALIGN -= Kd_H;
                     }
-                    else if (str == 6) Kp_H -= 0.01;
-                    else if (str == 7) Ki_H -= 0.00001;
+                    if (str == 6) Kp_H -= 0.01;
+                    else if (str == 7) Ki_H -= 0.0001;
                     else if (str == 8) Kd_H -= 0.001;
                     loops.pause(BTN_PRESS_LOOP_DELAY);
                     continue;
@@ -720,8 +730,8 @@ function PIDs_Tune(screen: number = 0) {
                         else if (str == 3) Ki_R_LINE_ALIGN += Ki_H;
                         else if (str == 4) Kd_R_LINE_ALIGN += Kd_H;
                     }
-                    else if (str == 6) Kp_H += 0.01;
-                    else if (str == 7) Ki_H += 0.00001;
+                    if (str == 6) Kp_H += 0.01;
+                    else if (str == 7) Ki_H += 0.0001;
                     else if (str == 8) Kd_H += 0.001;
                     loops.pause(BTN_PRESS_LOOP_DELAY);
                     continue;
